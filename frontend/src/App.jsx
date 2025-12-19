@@ -1,6 +1,7 @@
 import LaserFlow from './Hero';
 import { useRef } from 'react';
 import image from './assets/public-transport-kathmandu-bus.jpg'
+import FluidGlass from './FluidGlass';
 
 // NOTE: You can also adjust the variables in the shader for super detailed customization
 
@@ -40,7 +41,7 @@ export default function App() {
       }}
     >
       <LaserFlow
-        horizontalBeamOffset={0.1}
+        horizontalBeamOffset={0.23}
         verticalBeamOffset={0.0}
         color="#69bdfaff"
       />
@@ -52,17 +53,18 @@ export default function App() {
         transform: 'translateX(-50%)',
         width: '86%',
         height: '60%',
-        backgroundColor: '#060010',
+        backgroundColor: '#859aa5ff',
         borderRadius: '20px',
         border: '2px solid #c0e4feff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
         color: 'white',
         fontSize: '2rem',
         zIndex: 6
       }}>
-        {/* Your content here */}
+        <FluidGlass />
       </div>
 
       <img

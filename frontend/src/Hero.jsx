@@ -257,7 +257,7 @@ export const LaserFlow = ({
     decay = 1.1,
     falloffStart = 1.2,
     fogFallSpeed = 0.6,
-    color = '#FF79C6'
+    color = '#000000ff'
 }) => {
     const mountRef = useRef(null);
     const rendererRef = useRef(null);
@@ -525,7 +525,8 @@ export const LaserFlow = ({
         animate();
 
         return () => {
-            clearTimeout(timer);
+            clearTimeout(initTimer);
+            clearInterval(initInterval);
             cancelAnimationFrame(raf);
             ro.disconnect();
             io.disconnect();
