@@ -1,41 +1,52 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { useNavigate, Navigate } from "react-router-dom";
+import { loginDriver } from "../store/authSlice";
+import { verifyAuthDriver } from "../store/authSlice";
 
 const Login = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  const [email, setEmail] = useState("");
+  const { isAuthenticated, token } = useAppSelector((state) => state.auth);
+  const [licenseNumber, setLicenseNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [errorScreen, setErrorScreen] = useState("");
+
+  useEffect(() => {
+    const tokens = localStorage.getItem("token");
+    if (!tokens) return;
+    dispatch(verifyAuthDriver({ token: tokens }));
+  }, [dispatch, token]);
 
   if (isAuthenticated) {
     return <Navigate to="/access/driver" replace />;
   }
 
-  const validateEmail = (email: string) => {
-    return /\S+@\S+\.\S+/.test(email);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setErrorScreen("");
 
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address.");
+    if (!licenseNumber.trim()) {
+      setErrorScreen("Please enter a valid Driver's License Number.");
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 3) {
+      setErrorScreen("Password must be at least 3 characters long.");
       return;
     }
 
-    // Mock token generation
-    const token = `sfdsdfvsdhgbsdgsd-${Date.now()}`;
-    console.log(token);
-    navigate("/access/driver");
+    dispatch(
+      loginDriver({ driverLicenseNumber: licenseNumber, loginCode: password })
+    )
+      .unwrap()
+      .then((res) => {
+        localStorage.setItem("token", res.token);
+        navigate("/access/driver");
+      })
+      .catch((err) => {
+        setErrorScreen(err.message || "Something went wrong");
+      });
   };
 
   return (
@@ -54,21 +65,21 @@ const Login = () => {
           <div className="space-y-4">
             <div>
               <label
-                htmlFor="email"
+                htmlFor="licenseNumber"
                 className="block text-sm font-medium text-gray-300"
               >
-                Email address
+                Driver's License Number
               </label>
               <input
-                id="email"
-                name="email"
+                id="licenseNumber"
+                name="licenseNumber"
                 type="text"
-                autoComplete="email"
+                autoComplete="off"
                 required
                 className="w-full px-4 py-3 mt-1 text-white bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-500"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your license number"
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
               />
             </div>
             <div>
@@ -92,9 +103,9 @@ const Login = () => {
             </div>
           </div>
 
-          {error && (
+          {errorScreen && (
             <div className="p-3 text-sm text-red-200 bg-red-500/20 border border-red-500/30 rounded-lg">
-              {error}
+              {errorScreen}
             </div>
           )}
 

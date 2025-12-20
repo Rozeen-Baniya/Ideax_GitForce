@@ -1,34 +1,37 @@
-const Transport = require('../models/transport.model');
-const Trip = require('../models/trip.model');
-const Wallet = require('../models/wallet.model');
-const jwt = require('jsonwebtoken');
-const { deductMoney } = require('./wallet.controller');
-const { createTransaction2 } = require('./transactions.controller');
+const Transport = require("../models/transport.model");
+const Trip = require("../models/trip.model");
+const Wallet = require("../models/wallet.model");
+const jwt = require("jsonwebtoken");
+const { deductMoney } = require("./wallet.controller");
+const { createTransaction2 } = require("./transactions.controller");
+const User = require("../models/user.model");
+const Ward = require("../models/ward.model");
+const Org = require("../models/org.model");
 
 exports.handleTripStatus = async (req, res) => {
   try {
     const { transportId, userId } = req.body;
-    const fare =20;
+    const fare = 20;
 
     // ✅ Ensure wallet exists
     const wallet = await Wallet.findOne({ userId });
     if (!wallet) {
       return res.status(404).json({
-        message: 'Wallet not found. Please ask user for KYC verification.'
+        message: "Wallet not found. Please ask user for KYC verification.",
       });
     }
 
     // ✅ Validate transport
     const bus = await Transport.findById(transportId);
     if (!bus) {
-      return res.status(404).json({ message: 'Bus not found' });
+      return res.status(404).json({ message: "Bus not found" });
     }
 
     // ✅ Check if there's an ACTIVE trip (Tap-Out)
     let activeTrip = await Trip.findOne({
       transportId,
       passengerId: userId,
-      isCompleted: false
+      isCompleted: false,
     });
 
     if (activeTrip) {
@@ -39,26 +42,26 @@ exports.handleTripStatus = async (req, res) => {
           $set: {
             isCompleted: true,
             destinationStation: "Battisputali",
-            fare
-          }
+            fare,
+          },
         },
         { new: true }
       );
 
       const walletId = wallet._id;
 
-      await deductMoney({ amount:fare, walletId });
+      await deductMoney({ amount: fare, walletId });
 
       await createTransaction2({
         type: "Bus Fare",
         amount: fare,
         walletId,
-        remarks: `From ${updatedTrip.startingStation} to ${updatedTrip.destinationStation}`
+        remarks: `From ${updatedTrip.startingStation} to ${updatedTrip.destinationStation}`,
       });
 
       return res.status(200).json({
         message: "Trip completed successfully!",
-        trip: updatedTrip
+        trip: updatedTrip,
       });
     }
 
@@ -70,7 +73,7 @@ exports.handleTripStatus = async (req, res) => {
       destinationStation: "TBD",
       passengerType: "User",
       passengerId: userId,
-      isCompleted: false
+      isCompleted: false,
     });
 
     await newTrip.save();
@@ -78,18 +81,16 @@ exports.handleTripStatus = async (req, res) => {
     return res.status(200).json({
       message: "User boarded successfully!",
       trip: newTrip,
-      bus
+      bus,
     });
-
   } catch (error) {
     console.error("Trip Status Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 exports.getTrips = async (req, res) => {
   try {
@@ -101,46 +102,101 @@ exports.getTrips = async (req, res) => {
 
     // Fetch all trips for this user
     const trips = await Trip.find({ passengerId: userId })
-      .populate({ path: 'transportId', model: Transport })
+      .populate({ path: "transportId", model: Transport })
       .sort({ createdAt: -1 });
 
     // Format trips
-    const formattedTrips = trips.map(trip => ({
-      from: trip.startingStation || 'TBD',
-      to: trip.destinationStation || 'TBD',
-      date: trip.createdAt ? trip.createdAt.toISOString().split('T')[0] : 'TBD',
+    const formattedTrips = trips.map((trip) => ({
+      from: trip.startingStation || "TBD",
+      to: trip.destinationStation || "TBD",
+      date: trip.createdAt ? trip.createdAt.toISOString().split("T")[0] : "TBD",
       bus: trip.transportId
         ? `${trip.transportId.transportCompany} ${trip.transportId.vehicleNumber}`
-        : 'Unknown Bus',
-      status: trip.isCompleted ? 'Completed' : 'Active',
+        : "Unknown Bus",
+      status: trip.isCompleted ? "Completed" : "Active",
       fare: `NPR ${trip.fare.toFixed(2)}`,
       startTime: trip.createdAt
-        ? trip.createdAt.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
+        ? trip.createdAt.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
             hour12: true,
-            timeZone: 'Asia/Kathmandu'
-
+            timeZone: "Asia/Kathmandu",
           })
-        : 'TBD',
+        : "TBD",
       endTime:
         trip.updatedAt && trip.isCompleted
-          ? trip.updatedAt.toLocaleTimeString('en-IN', {
-              hour: '2-digit',
-              minute: '2-digit',
+          ? trip.updatedAt.toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
               hour12: true,
-              timeZone: 'Asia/Kathmandu'
-
+              timeZone: "Asia/Kathmandu",
             })
-          : 'TBD'
+          : "TBD",
     }));
 
     return res.status(200).json({ trips: formattedTrips });
   } catch (error) {
-    console.error('Get Trips Error:', error);
+    console.error("Get Trips Error:", error);
     return res.status(500).json({
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getTripsByTransportId = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(decoded);
+
+    const transportId = decoded.transportId;
+
+    if (!transportId) {
+      return res.status(400).json({ message: "Transport ID is required" });
+    }
+
+    // Fetch all trips for this transport
+    const trips = await Trip.find({ transportId })
+      .populate({ path: "passengerId", model: Trip.passengerType })
+      .sort({ createdAt: -1 });
+
+    // Format trips
+    const formattedTrips = trips.map((trip) => ({
+      from: trip.startingStation || "TBD",
+      to: trip.destinationStation || "TBD",
+      date: trip.createdAt ? trip.createdAt.toISOString().split("T")[0] : "TBD",
+      passenger: trip.passengerId
+        ? `${trip.passengerId.firstName} ${trip.passengerId.lastName}`
+        : "Unknown Passenger",
+      status: trip.isCompleted ? "Completed" : "Active",
+      fare: `NPR ${trip.fare.toFixed(2)}`,
+      startTime: trip.createdAt
+        ? trip.createdAt.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kathmandu",
+          })
+        : "TBD",
+      endTime:
+        trip.updatedAt && trip.isCompleted
+          ? trip.updatedAt.toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Kathmandu",
+            })
+          : "TBD",
+    }));
+
+    return res.status(200).json({ trips: formattedTrips });
+  } catch (error) {
+    console.error("Get Trips Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
     });
   }
 };

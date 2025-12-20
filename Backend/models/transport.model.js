@@ -70,9 +70,4 @@ const transportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Create a 2dsphere index for geospatial queries
-transportSchema.index({ 'location.coordinates': '2dsphere' });
-
-module.exports = mongoose.model('Transport', transportSchema);
-
 module.exports = mongoose.model("Transport", transportSchema);
