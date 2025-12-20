@@ -114,7 +114,7 @@ const ModeWrapper = memo(function ModeWrapper({
         gl.setRenderTarget(null);
 
         // Background Color
-        gl.setClearColor(0x859aa5, 1);
+        gl.setClearColor(0x000000, 1);
     });
 
     const { scale, ior, thickness, anisotropy, chromaticAberration, ...extraMat } = modeProps;

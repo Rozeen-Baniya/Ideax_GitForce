@@ -366,7 +366,7 @@ export const LaserFlow = ({
         const mouseTarget = new THREE.Vector2(0, 0);
         const mouseSmooth = new THREE.Vector2(0, 0);
 
-        const setSizeNow = () => {
+        const setSizeNow = (force = false) => {
             const w = mount.clientWidth || 1;
             const h = mount.clientHeight || 1;
             const pr = currentDprRef.current;
@@ -374,7 +374,7 @@ export const LaserFlow = ({
             const last = lastSizeRef.current;
             const sizeChanged = Math.abs(w - last.width) > 0.5 || Math.abs(h - last.height) > 0.5;
             const dprChanged = Math.abs(pr - last.dpr) > 0.01;
-            if (!sizeChanged && !dprChanged) {
+            if (!force && !sizeChanged && !dprChanged) {
                 return;
             }
 
